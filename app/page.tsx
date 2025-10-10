@@ -26,7 +26,7 @@ export default function Page() {
     <div className="min-h-screen overflow-x-hidden relative">
       {/* Scroll Progress Bar */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500/60 via-red-400/40 to-foreground/50 origin-left z-50"
+        className="fixed top-0 left-0 right-0 h-1 bg-primary origin-left z-50"
         style={{ scaleX: scaleProgress }}
       />
 
@@ -60,11 +60,11 @@ function HeroSection() {
 
   return (
     <section ref={ref} className="relative min-h-[100vh] flex flex-col items-center justify-center text-center px-6 py-20 overflow-hidden">
-      {/* Animated gradient background with red accents */}
+      {/* Animated gradient background */}
       <motion.div className="absolute inset-0 -z-10" style={{ y }}>
         <div className="absolute inset-0 bg-background bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
         <motion.div
-          className="absolute top-0 -left-1/4 w-1/2 h-1/2 bg-gradient-to-br from-red-500/10 via-foreground/5 to-transparent rounded-full blur-3xl"
+          className="absolute top-0 -left-1/4 w-1/2 h-1/2 bg-gradient-to-br from-primary/10 via-muted/5 to-transparent rounded-full blur-3xl"
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.3, 0.6, 0.3],
@@ -76,7 +76,7 @@ function HeroSection() {
           }}
         />
         <motion.div
-          className="absolute bottom-0 -right-1/4 w-1/2 h-1/2 bg-gradient-to-tl from-foreground/5 via-red-400/10 to-transparent rounded-full blur-3xl"
+          className="absolute bottom-0 -right-1/4 w-1/2 h-1/2 bg-gradient-to-tl from-muted/5 via-primary/10 to-transparent rounded-full blur-3xl"
           animate={{
             scale: [1.2, 1, 1.2],
             opacity: [0.5, 0.3, 0.5],
@@ -89,7 +89,7 @@ function HeroSection() {
           }}
         />
         <motion.div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/3 h-1/3 bg-gradient-to-br from-red-500/5 to-transparent rounded-full blur-2xl"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/3 h-1/3 bg-gradient-to-br from-primary/5 to-transparent rounded-full blur-2xl"
           animate={{
             scale: [1, 1.3, 1],
             rotate: [0, 180, 360],
@@ -106,13 +106,12 @@ function HeroSection() {
       {[...Array(30)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full"
+          className="absolute rounded-full bg-muted/20"
           style={{
             width: Math.random() * 4 + 1,
             height: Math.random() * 4 + 1,
             left: `${Math.random() * 100}%`,
             top: `${Math.random() * 100}%`,
-            background: i % 3 === 0 ? "rgba(239, 68, 68, 0.3)" : "rgba(128, 128, 128, 0.2)",
           }}
           animate={{
             y: [0, -50, 0],
@@ -133,14 +132,14 @@ function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Badge variant="secondary" className="px-5 py-2 backdrop-blur-md bg-background/60 border border-red-500/20 shadow-lg shadow-red-500/10">
+          <Badge variant="secondary" className="px-5 py-2 backdrop-blur-md bg-background/60 border shadow-lg">
             <motion.div
               animate={{ rotate: [0, 360] }}
               transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
             >
-              <Sparkles className="h-3.5 w-3.5 mr-2 text-red-500" />
+              <Sparkles className="h-3.5 w-3.5 mr-2" />
             </motion.div>
-            <span className="bg-gradient-to-r from-foreground via-red-500/80 to-foreground bg-clip-text text-transparent font-medium">
+            <span className="font-medium">
               AI-Assisted Form Builder
             </span>
           </Badge>
@@ -158,17 +157,17 @@ function HeroSection() {
             whileHover={{ scale: 1.05, rotate: -2 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            <span className="relative z-10 bg-gradient-to-br from-foreground via-red-500 to-foreground bg-clip-text text-transparent">
+            <span className="relative z-10">
               Snap
             </span>
             <motion.span
-              className="absolute bottom-3 left-0 right-0 h-4 bg-gradient-to-r from-red-500/30 via-red-400/20 to-foreground/20 -rotate-1 rounded blur-sm"
+              className="absolute bottom-3 left-0 right-0 h-4 bg-primary/30 -rotate-1 rounded blur-sm"
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
               transition={{ duration: 0.8, delay: 0.5 }}
             />
             <motion.span
-              className="absolute bottom-3 left-0 right-0 h-4 bg-gradient-to-r from-red-500/50 via-foreground/20 to-red-400/30 -rotate-1 rounded"
+              className="absolute bottom-3 left-0 right-0 h-4 bg-primary/50 -rotate-1 rounded"
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
               transition={{ duration: 0.8, delay: 0.6 }}
@@ -183,7 +182,7 @@ function HeroSection() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           Create, edit, and analyze forms with a minimal and intuitive interface.
-          <span className="text-red-500/80 font-medium"> Powered by AI</span>, enhanced by design.
+          <span className="text-foreground font-medium"> Powered by AI</span>, enhanced by design.
         </motion.p>
 
         <motion.div
@@ -193,10 +192,10 @@ function HeroSection() {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <MagneticButton>
-            <Button asChild size="lg" className="gap-2 text-lg px-8 relative overflow-hidden group bg-gradient-to-r from-foreground via-red-500/20 to-foreground hover:shadow-lg hover:shadow-red-500/20 transition-all">
+            <Button asChild size="lg" className="gap-2 text-lg px-8 relative overflow-hidden group">
               <Link href="/auth">
                 <motion.span
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/30 to-transparent"
+                  className="absolute inset-0 bg-primary/20"
                   initial={{ x: "-100%" }}
                   whileHover={{ x: "100%" }}
                   transition={{ duration: 0.6 }}
@@ -208,7 +207,7 @@ function HeroSection() {
           </MagneticButton>
 
           <MagneticButton>
-            <Button asChild variant="outline" size="lg" className="text-lg px-8 backdrop-blur-sm border-foreground/10 hover:border-red-500/30 hover:bg-red-500/5 transition-all">
+            <Button asChild variant="outline" size="lg" className="text-lg px-8 backdrop-blur-sm">
               <Link href="/dashboard">View Dashboard</Link>
             </Button>
           </MagneticButton>
@@ -225,7 +224,7 @@ function HeroSection() {
             whileHover={{ x: 5 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            <CheckCircle2 className="h-4 w-4 text-red-500/70" />
+            <CheckCircle2 className="h-4 w-4" />
             <span>No credit card required</span>
           </motion.div>
           <motion.div
@@ -233,7 +232,7 @@ function HeroSection() {
             whileHover={{ x: 5 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            <CheckCircle2 className="h-4 w-4 text-red-500/70" />
+            <CheckCircle2 className="h-4 w-4" />
             <span>Google OAuth only</span>
           </motion.div>
         </motion.div>
@@ -249,9 +248,9 @@ function HeroSection() {
           y: { duration: 2, repeat: Infinity },
         }}
       >
-        <div className="w-6 h-10 border-2 border-foreground/20 rounded-full flex justify-center relative overflow-hidden">
+        <div className="w-6 h-10 border-2 border-border rounded-full flex justify-center relative overflow-hidden">
           <motion.div
-            className="w-1.5 h-1.5 bg-gradient-to-b from-red-500 to-foreground rounded-full mt-2"
+            className="w-1.5 h-1.5 bg-foreground rounded-full mt-2"
             animate={{ y: [0, 16, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
@@ -268,10 +267,10 @@ function FeaturesSection() {
 
   return (
     <section ref={ref} className="relative px-6 py-32 overflow-hidden">
-      {/* Background gradient with red */}
+      {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/30 to-background -z-10">
         <motion.div
-          className="absolute top-1/4 right-0 w-1/3 h-1/3 bg-gradient-to-l from-red-500/10 to-transparent rounded-full blur-3xl"
+          className="absolute top-1/4 right-0 w-1/3 h-1/3 bg-gradient-to-l from-primary/10 to-transparent rounded-full blur-3xl"
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.3, 0.5, 0.3],
@@ -292,7 +291,7 @@ function FeaturesSection() {
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
             >
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight bg-gradient-to-br from-foreground via-red-500/60 to-foreground bg-clip-text text-transparent">
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
                 Everything you need to create powerful forms
               </h2>
             </motion.div>
@@ -316,42 +315,36 @@ function FeaturesSection() {
               title: "AI-Assisted Creation",
               description: "Let AI help you build forms faster with intelligent suggestions and templates.",
               delay: 0,
-              accent: "red",
             },
             {
               icon: MousePointerClick,
               title: "Drag & Drop Builder",
               description: "Intuitive drag-and-drop interface with live preview. Build forms visually without code.",
               delay: 0.1,
-              accent: "gray",
             },
             {
               icon: BarChart3,
               title: "Real-Time Analytics",
               description: "Visualize responses instantly with beautiful charts and detailed submission tables.",
               delay: 0.2,
-              accent: "red",
             },
             {
               icon: Palette,
               title: "Minimal Design",
               description: "Clean, monochrome interface that focuses on functionality and user experience.",
               delay: 0.3,
-              accent: "gray",
             },
             {
               icon: Shield,
               title: "Secure Authentication",
               description: "Google OAuth integration ensures secure and seamless access to your forms.",
               delay: 0.4,
-              accent: "red",
             },
             {
               icon: Zap,
               title: "Lightning Fast",
               description: "Built with Next.js 14 and optimized for performance. Create and share forms instantly.",
               delay: 0.5,
-              accent: "gray",
             },
           ].map((feature, index) => (
             <FeatureCard key={index} {...feature} />
@@ -369,7 +362,7 @@ function HowItWorksSection() {
       <div className="max-w-5xl mx-auto space-y-16">
         <FadeInWhenVisible>
           <div className="text-center space-y-4">
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight bg-gradient-to-br from-foreground via-red-500/60 to-foreground bg-clip-text text-transparent">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
               How it works
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-balance">
@@ -379,8 +372,8 @@ function HowItWorksSection() {
         </FadeInWhenVisible>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
-          {/* Connection lines with red gradient */}
-          <div className="hidden md:block absolute top-7 left-[16.666%] right-[16.666%] h-0.5 bg-gradient-to-r from-transparent via-red-500/30 to-transparent" />
+          {/* Connection lines */}
+          <div className="hidden md:block absolute top-7 left-[16.666%] right-[16.666%] h-0.5 bg-gradient-to-r from-transparent via-border to-transparent" />
 
           {[
             {
@@ -411,7 +404,7 @@ function HowItWorksSection() {
               transition={{ duration: 0.5, delay: step.delay }}
             >
               <motion.div
-                className="h-16 w-16 rounded-full bg-gradient-to-br from-foreground via-red-500 to-foreground text-background flex items-center justify-center text-2xl font-bold relative z-10 shadow-xl shadow-red-500/20"
+                className="h-16 w-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold relative z-10 shadow-xl"
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
@@ -425,7 +418,7 @@ function HowItWorksSection() {
                 </motion.span>
                 {/* Pulse ring */}
                 <motion.div
-                  className="absolute inset-0 rounded-full border-2 border-red-500/50"
+                  className="absolute inset-0 rounded-full border-2 border-primary/50"
                   animate={{
                     scale: [1, 1.3, 1],
                     opacity: [0.5, 0, 0.5],
@@ -437,7 +430,7 @@ function HowItWorksSection() {
                   }}
                 />
               </motion.div>
-              <h3 className="text-2xl font-semibold group-hover:text-red-500/80 transition-colors">
+              <h3 className="text-2xl font-semibold">
                 {step.title}
               </h3>
               <p className="text-muted-foreground leading-relaxed">
@@ -455,10 +448,10 @@ function HowItWorksSection() {
 function CTASection() {
   return (
     <section className="relative px-6 py-32 overflow-hidden">
-      {/* Animated background with red */}
+      {/* Animated background */}
       <div className="absolute inset-0 -z-10">
         <motion.div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-br from-red-500/15 via-foreground/10 to-transparent rounded-full blur-3xl"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-br from-primary/15 via-muted/10 to-transparent rounded-full blur-3xl"
           animate={{
             scale: [1, 1.1, 1],
             opacity: [0.3, 0.5, 0.3],
@@ -479,9 +472,9 @@ function CTASection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <Card className="border-2 backdrop-blur-sm bg-background/50 hover:shadow-2xl hover:shadow-red-500/10 transition-all duration-500 overflow-hidden relative group border-foreground/10 hover:border-red-500/30">
+          <Card className="border-2 backdrop-blur-sm bg-background/50 hover:shadow-2xl transition-all duration-500 overflow-hidden relative group">
             <motion.div
-              className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
             />
             <CardContent className="pt-16 pb-16 text-center space-y-8 relative z-10">
               <motion.div
@@ -490,7 +483,7 @@ function CTASection() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight bg-gradient-to-br from-foreground via-red-500 to-foreground bg-clip-text text-transparent">
+                <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
                   Ready to build better forms?
                 </h2>
               </motion.div>
@@ -514,10 +507,10 @@ function CTASection() {
                 transition={{ duration: 0.5, delay: 0.4 }}
               >
                 <MagneticButton>
-                  <Button asChild size="lg" className="gap-2 text-lg px-8 relative overflow-hidden group bg-gradient-to-r from-foreground via-red-500/20 to-foreground hover:shadow-lg hover:shadow-red-500/20">
+                  <Button asChild size="lg" className="gap-2 text-lg px-8 relative overflow-hidden group">
                     <Link href="/auth">
                       <motion.span
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/30 to-transparent"
+                        className="absolute inset-0 bg-primary/20"
                         initial={{ x: "-100%" }}
                         whileHover={{ x: "100%" }}
                         transition={{ duration: 0.6 }}
@@ -529,7 +522,7 @@ function CTASection() {
                 </MagneticButton>
 
                 <MagneticButton>
-                  <Button asChild variant="ghost" size="lg" className="text-lg px-8 hover:bg-red-500/5 hover:text-red-500 transition-colors">
+                  <Button asChild variant="ghost" size="lg" className="text-lg px-8">
                     <Link href="/create">Try the Builder</Link>
                   </Button>
                 </MagneticButton>
@@ -561,13 +554,11 @@ function FeatureCard({
   title,
   description,
   delay,
-  accent,
 }: {
   icon: any
   title: string
   description: string
   delay: number
-  accent: "red" | "gray"
 }) {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true })
@@ -580,27 +571,15 @@ function FeatureCard({
       transition={{ duration: 0.5, delay }}
       whileHover={{ y: -12, scale: 1.02 }}
     >
-      <Card className={`h-full border-2 transition-all duration-300 relative group overflow-hidden backdrop-blur-sm bg-background/50 ${
-        accent === "red"
-          ? "hover:border-red-500/40 hover:shadow-xl hover:shadow-red-500/10"
-          : "hover:border-foreground/30 hover:shadow-xl"
-      }`}>
+      <Card className="h-full border-2 transition-all duration-300 relative group overflow-hidden backdrop-blur-sm bg-background/50 hover:shadow-xl">
         {/* Gradient hover effect */}
         <motion.div
-          className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
-            accent === "red"
-              ? "bg-gradient-to-br from-red-500/10 to-transparent"
-              : "bg-gradient-to-br from-foreground/5 to-transparent"
-          }`}
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-primary/5 to-transparent"
         />
 
         <CardHeader className="relative z-10">
           <motion.div
-            className={`h-16 w-16 rounded-2xl flex items-center justify-center mb-6 relative overflow-hidden group-hover:shadow-xl transition-all ${
-              accent === "red"
-                ? "bg-gradient-to-br from-red-500/15 to-red-400/5 group-hover:from-red-500/25 group-hover:to-red-400/10"
-                : "bg-gradient-to-br from-foreground/10 to-foreground/5"
-            }`}
+            className="h-16 w-16 rounded-2xl flex items-center justify-center mb-6 relative overflow-hidden group-hover:shadow-xl transition-all bg-muted"
             whileHover={{ rotate: [0, -5, 5, -5, 0], scale: 1.1 }}
             transition={{ duration: 0.5 }}
           >
@@ -609,21 +588,19 @@ function FeatureCard({
               animate={isInView ? { scale: 1, rotate: 0 } : { scale: 0, rotate: -180 }}
               transition={{ duration: 0.6, delay: delay + 0.2, type: "spring" }}
             >
-              <Icon className={`h-8 w-8 relative z-10 ${accent === "red" ? "text-red-500" : ""}`} />
+              <Icon className="h-8 w-8 relative z-10" />
             </motion.div>
 
             {/* Shine effect */}
             <motion.div
-              className={`absolute inset-0 bg-gradient-to-r from-transparent to-transparent ${
-                accent === "red" ? "via-red-500/30" : "via-white/20"
-              }`}
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent"
               initial={{ x: "-100%" }}
               whileHover={{ x: "100%" }}
               transition={{ duration: 0.6 }}
             />
           </motion.div>
 
-          <CardTitle className="text-xl mb-3 group-hover:text-foreground/80 transition-colors">
+          <CardTitle className="text-xl mb-3">
             {title}
           </CardTitle>
           <CardDescription className="leading-relaxed">
