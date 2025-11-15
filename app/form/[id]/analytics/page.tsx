@@ -1,68 +1,149 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { analyticsApi, responsesApi } from "@/lib/api-client"
+import { ProtectedRoute } from "@/components/auth/protected-route"
+import { useToast } from "@/hooks/use-toast"
 
-const datasets: Record<"1W" | "1M" | "1Y", Array<{ label: string; count: number }>> = {
-  "1W": [
-    { label: "Mon", count: 12 },
-    { label: "Tue", count: 18 },
-    { label: "Wed", count: 9 },
-    { label: "Thu", count: 22 },
-    { label: "Fri", count: 15 },
-    { label: "Sat", count: 11 },
-    { label: "Sun", count: 17 },
-  ],
-  "1M": [
-    { label: "08/25", count: 10 },
-    { label: "08/28", count: 14 },
-    { label: "08/31", count: 9 },
-    { label: "09/03", count: 18 },
-    { label: "09/06", count: 13 },
-    { label: "09/09", count: 21 },
-    { label: "09/12", count: 15 },
-    { label: "09/15", count: 24 },
-    { label: "09/18", count: 16 },
-    { label: "09/21", count: 19 },
-  ],
-  "1Y": [
-    { label: "Oct", count: 120 },
-    { label: "Nov", count: 138 },
-    { label: "Dec", count: 132 },
-    { label: "Jan", count: 146 },
-    { label: "Feb", count: 154 },
-    { label: "Mar", count: 162 },
-    { label: "Apr", count: 151 },
-    { label: "May", count: 170 },
-    { label: "Jun", count: 164 },
-    { label: "Jul", count: 176 },
-    { label: "Aug", count: 181 },
-    { label: "Sep", count: 189 },
-  ],
+type TimeRange = "1W" | "1M" | "1Y"
+
+type AnalyticsData = {
+  label: string
+  count: number
+}[]
+
+type Response = {
+  id: string
+  email?: string
+  data: Record<string, any>
+  createdAt: string
 }
 
-const submissions = Array.from({ length: 8 }).map((_, i) => ({
-  id: `sub-${i + 1}`,
-  email: `user${i + 1}@example.com`,
-  rating: Math.ceil(Math.random() * 5),
-  date: "2025-09-20",
-}))
+function AnalyticsContent() {
+  const params = useParams<{ id: string }>()
+  const id = Array.isArray(params?.id) ? params.id[0] : params?.id || ""
+  const router = useRouter()
+  const { toast } = useToast()
 
-export default function AnalyticsPage() {
-  const [range, setRange] = useState<"1W" | "1M" | "1Y">("1W")
-  const data = datasets[range]
+  const [range, setRange] = useState<TimeRange>("1W")
+  const [loading, setLoading] = useState(true)
+  const [chartData, setChartData] = useState<AnalyticsData>([])
+  const [responses, setResponses] = useState<Response[]>([])
+  const [stats, setStats] = useState<{ totalResponses: number; avgCompletionTime?: number } | null>(null)
+
+  useEffect(() => {
+    if (!id) return
+    loadData()
+  }, [id, range])
+
+  async function loadData() {
+    try {
+      setLoading(true)
+
+      // Fetch analytics data
+      const analyticsResponse = await analyticsApi.get(id, range)
+      if (analyticsResponse.success && analyticsResponse.data) {
+        setChartData(analyticsResponse.data.timeSeries || [])
+        setStats({
+          totalResponses: analyticsResponse.data.totalResponses || 0,
+          avgCompletionTime: analyticsResponse.data.avgCompletionTime,
+        })
+      }
+
+      // Fetch responses list
+      const responsesResponse = await responsesApi.list(id, { limit: 20 })
+      if (responsesResponse.success && responsesResponse.data) {
+        setResponses(responsesResponse.data)
+      }
+    } catch (error) {
+      console.error("Failed to load analytics:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load analytics data.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    } catch {
+      return dateString
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="px-6 py-6 space-y-8">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="px-6 py-6 space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-medium">Form Analytics</h1>
-        <Button variant="secondary">Download PDF</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={() => router.push(`/edit/${id}`)}>
+            Back to Edit
+          </Button>
+          <Button variant="secondary" onClick={() => window.print()}>
+            Download PDF
+          </Button>
+        </div>
       </div>
 
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardDescription>Total Responses</CardDescription>
+            <CardTitle className="text-3xl">{stats?.totalResponses || 0}</CardTitle>
+          </CardHeader>
+        </Card>
+        {stats?.avgCompletionTime && (
+          <Card>
+            <CardHeader>
+              <CardDescription>Avg. Completion Time</CardDescription>
+              <CardTitle className="text-3xl">{Math.round(stats.avgCompletionTime)}s</CardTitle>
+            </CardHeader>
+          </Card>
+        )}
+      </div>
+
+      {/* Chart */}
       <Card>
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -103,60 +184,92 @@ export default function AnalyticsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <ChartContainer
-            config={{
-              count: { label: "Responses", color: "hsl(var(--chart-1))" },
-            }}
-            className="h-[300px]"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="label" />
-                <YAxis allowDecimals={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Area
-                  type="monotone"
-                  dataKey="count"
-                  stroke="var(--color-count)"
-                  fill="var(--color-count)"
-                  fillOpacity={0.2}
-                  name="Responses"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+          {chartData.length === 0 ? (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              No data available for this time range
+            </div>
+          ) : (
+            <ChartContainer
+              config={{
+                count: { label: "Responses", color: "hsl(var(--chart-1))" },
+              }}
+              className="h-[300px]"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" />
+                  <YAxis allowDecimals={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    stroke="var(--color-count)"
+                    fill="var(--color-count)"
+                    fillOpacity={0.2}
+                    name="Responses"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          )}
         </CardContent>
       </Card>
 
+      {/* Responses Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Submissions</CardTitle>
-          <CardDescription>Latest entries</CardDescription>
+          <CardTitle>Recent Submissions</CardTitle>
+          <CardDescription>Latest {responses.length} entries</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {submissions.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-mono text-xs">{s.id}</TableCell>
-                  <TableCell>{s.email}</TableCell>
-                  <TableCell>{s.rating}</TableCell>
-                  <TableCell>{s.date}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {responses.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">No responses yet</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Submitted</TableHead>
+                    <TableHead>Data</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {responses.map((response) => (
+                    <TableRow key={response.id}>
+                      <TableCell className="font-mono text-xs">{response.id.slice(0, 8)}</TableCell>
+                      <TableCell>{response.email || "Anonymous"}</TableCell>
+                      <TableCell>{formatDate(response.createdAt)}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            // Show response data in a simple alert for now
+                            alert(JSON.stringify(response.data, null, 2))
+                          }}
+                        >
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function AnalyticsPage() {
+  return (
+    <ProtectedRoute>
+      <AnalyticsContent />
+    </ProtectedRoute>
   )
 }

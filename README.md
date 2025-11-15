@@ -1,7 +1,7 @@
 # Snap-form
 
-Snap-form is a modern, AI-assisted form builder that enables users to create, edit, and analyze forms with a minimal and intuitive interface.  
-It combines a clean, monochrome design with drag-and-drop features, Google OAuth authentication, and real-time analytics integration.
+Snap-form is a modern form builder that enables users to create, edit, and analyze forms with a minimal and intuitive interface.
+It combines a clean, monochrome design with drag-and-drop features, Google OAuth authentication, real-time Google Sheets export, and analytics integration.
 
 ---
 
@@ -19,31 +19,67 @@ It combines a clean, monochrome design with drag-and-drop features, Google OAuth
 
 ## About the Project
 
-Snap-form is built to simplify form creation and analysis, offering a smooth, modern user experience inspired by Google Forms but extended with AI assistance.  
-Users can create forms, edit existing ones, collect responses, and visualize analytics in real-time.
+Snap-form is built to simplify form creation and analysis, offering a smooth, modern user experience inspired by Google Forms.
+Users can create forms with drag-and-drop, collect responses, export data to Google Sheets in real-time, and visualize analytics.
 
 ---
 
 ## Tech Stack
 
-- **Framework:** [Next.js](https://nextjs.org/) (Frontend + Backend)  
-- **UI:** [shadcn/ui](https://ui.shadcn.com/) with Tailwind CSS (Neutral preset)  
-- **Auth:** [BetterAuth](https://better-auth.com/) (OAuth-only, Google)  
-- **Database:** PostgreSQL with [Prisma ORM](https://www.prisma.io/)  
-- **Storage:** Vercel Object Storage for file uploads  
-- **Hosting:** [Vercel](https://vercel.com/)  
+- **Framework:** [Next.js 14](https://nextjs.org/) (App Router)
+- **UI:** [shadcn/ui](https://ui.shadcn.com/) with Tailwind CSS v4 (Neutral preset)
+- **Auth:** [BetterAuth](https://better-auth.com/) (Google OAuth only)
+- **Database:** PostgreSQL with [Prisma ORM](https://www.prisma.io/)
+- **Storage:** [Cloudflare R2](https://developers.cloudflare.com/r2/) for file uploads
+- **Integration:** [Google Sheets API](https://developers.google.com/sheets/api) for real-time response export
+- **Validation:** [Zod](https://zod.dev/) for schema validation
+- **Drag & Drop:** [@dnd-kit](https://dndkit.com/) for form builder
+- **Charts:** [Recharts](https://recharts.org/) for analytics visualization  
 
 ---
 
 ## Features
 
-- Minimal, modern, and responsive UI  
-- Google-only authentication with BetterAuth  
-- Drag-and-drop form builder (snippets, sorting, and preview)  
-- AI-assisted form creation (planned)  
-- Editable forms with prefilled values  
-- Analytics dashboard with charts and tables  
-- File uploads stored in Vercel Object Storage  
+### Core Features
+- ✅ **Drag-and-drop form builder** with 9 field types (text, choice, file upload, layout)
+- ✅ **Google OAuth authentication** (BetterAuth)
+- ✅ **Real-time Google Sheets export** - All form responses automatically exported to Google Sheets
+- ✅ **Form analytics** with time-series charts and response tracking
+- ✅ **File uploads** with Cloudflare R2 storage (10MB limit, images & PDFs)
+- ✅ **Admin dashboard** for system-wide management
+- ✅ **Role-based access control** (User, Admin, Super Admin)
+
+### Form Builder
+- Live preview panel
+- Sortable fields with drag-and-drop reordering
+- 9 field types: Short Text, Long Text, Multiple Choice, Checkboxes, Dropdown, Image, File Upload, Section Break, Divider
+- Form customization (title, description, cover image, icon, email requirements)
+- Field validation and required fields
+
+### Response Collection
+- Public form submission pages
+- Email collection (optional)
+- Form validation with Zod schemas
+- Response metadata (IP address, user agent, timestamp)
+
+### Google Sheets Integration
+- Automatic spreadsheet creation on form publish
+- Real-time response appending
+- Automatic sharing with form owner
+- Header updates when form fields change
+
+### Admin Features
+- User management (view all users, manage roles)
+- Form management (view all forms across users)
+- System statistics (users, forms, responses, trends)
+- Super admin configuration via code
+
+### Planned Features
+- 🔄 AI-assisted form creation
+- 🔄 Conditional logic and branching
+- 🔄 Custom themes and branding
+- 🔄 Form templates library
+- 🔄 Response notifications  
 
 ---
 
@@ -51,60 +87,257 @@ Users can create forms, edit existing ones, collect responses, and visualize ana
 
 ### Prerequisites
 
-- Node.js (v18+ recommended)  
-- PostgreSQL database instance  
-- Vercel account (for hosting and object storage)  
-- Google OAuth credentials  
+- **Bun** (v1.0+ recommended) or Node.js (v18+)
+- **PostgreSQL** database instance
+- **Google Cloud Project** with:
+  - OAuth 2.0 credentials
+  - Service account for Google Sheets API
+  - Sheets API enabled
+- **Cloudflare R2** bucket (for file uploads)
 
 ### Setup
 
-1. Clone the repository:
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/openlabsdevs/snap-form.git
    cd snap-form
-    ````
-2. Install dependencies:
+   ```
 
+2. **Install dependencies:**
    ```bash
    bun install
    ```
 
-3. Configure environment variables:
+3. **Configure environment variables:**
 
-   * Database URL for PostgreSQL
-   * Google OAuth client ID and secret
-   * Vercel object storage configuration
+   Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
 
-4. Run the development server:
+   Fill in the following required variables:
 
+   **Database:**
+   ```env
+   DATABASE_URL="postgresql://user:password@localhost:5432/snapform"
+   ```
+
+   **Authentication:**
+   ```env
+   BETTER_AUTH_SECRET="your-random-secret"  # Generate with: openssl rand -base64 32
+   BETTER_AUTH_URL="http://localhost:3000"
+   NEXT_PUBLIC_BETTER_AUTH_URL="http://localhost:3000"
+   GOOGLE_CLIENT_ID="your-google-client-id"
+   GOOGLE_CLIENT_SECRET="your-google-client-secret"
+   ```
+
+   **Google Sheets API:**
+   ```env
+   GOOGLE_SERVICE_ACCOUNT_EMAIL="service-account@project.iam.gserviceaccount.com"
+   GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+   ```
+
+   **Cloudflare R2:**
+   ```env
+   CLOUDFLARE_R2_ACCOUNT_ID="your-account-id"
+   CLOUDFLARE_R2_ACCESS_KEY_ID="your-access-key"
+   CLOUDFLARE_R2_SECRET_ACCESS_KEY="your-secret-key"
+   CLOUDFLARE_R2_BUCKET_NAME="snap-form-uploads"
+   CLOUDFLARE_R2_PUBLIC_URL="https://uploads.yourdomain.com"  # Optional
+   ```
+
+4. **Setup database:**
+   ```bash
+   # Generate Prisma client
+   bunx prisma generate
+
+   # Run migrations
+   bunx prisma migrate dev
+   ```
+
+5. **Configure super admin (optional):**
+
+   Edit `lib/admin.ts` and add your Google account email:
+   ```typescript
+   export const SUPER_ADMINS: string[] = [
+     "your-email@gmail.com",
+   ]
+   ```
+
+6. **Run the development server:**
    ```bash
    bun dev
    ```
+
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Google Cloud Setup Guide
+
+1. **Enable APIs:**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Enable "Google Sheets API" and "Google Drive API"
+
+2. **Create OAuth 2.0 Credentials:**
+   - Navigate to APIs & Services > Credentials
+   - Create OAuth 2.0 Client ID
+   - Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+   - Copy Client ID and Secret to `.env`
+
+3. **Create Service Account:**
+   - Navigate to IAM & Admin > Service Accounts
+   - Create service account
+   - Generate JSON key
+   - Copy email and private key to `.env`
+
+### Cloudflare R2 Setup Guide
+
+1. **Create R2 Bucket:**
+   - Go to Cloudflare Dashboard > R2
+   - Create bucket named `snap-form-uploads`
+
+2. **Generate API Token:**
+   - In R2 dashboard, click "Manage R2 API Tokens"
+   - Create token with "Edit" permissions
+   - Copy credentials to `.env`
+
+3. **Configure Public Access (optional):**
+   - Set up custom domain for R2 bucket
+   - Add domain to `CLOUDFLARE_R2_PUBLIC_URL`
 
 ---
 
 ## Project Structure
 
 ```
-/app
-  / (landing page)
-  /auth
-  /dashboard
-  /create
-  /edit/[id]
-  /form/[id]
-  /form/[id]/analytics
-  /profile
-/components
-  /ui
-  /builder
-  /charts
-  /auth
-/lib
-  prisma.ts
-  auth.ts
-  storage.ts
+snap-form/
+├── app/
+│   ├── (routes)
+│   │   ├── page.tsx                    # Landing page
+│   │   ├── auth/page.tsx               # Authentication
+│   │   ├── dashboard/page.tsx          # User dashboard
+│   │   ├── create/page.tsx             # Form builder
+│   │   ├── edit/[id]/page.tsx          # Edit form
+│   │   ├── form/[id]/
+│   │   │   ├── page.tsx                # Public form submission
+│   │   │   └── analytics/page.tsx      # Form analytics
+│   │   ├── profile/page.tsx            # User profile/pricing
+│   │   └── admin/                      # Admin dashboard (protected)
+│   │       ├── page.tsx                # Admin overview
+│   │       ├── users/page.tsx          # User management
+│   │       └── forms/page.tsx          # Form management
+│   └── api/
+│       ├── auth/[...all]/route.ts      # BetterAuth handler
+│       ├── upload/route.ts             # File upload to R2
+│       ├── forms/
+│       │   ├── route.ts                # List/create forms
+│       │   └── [id]/
+│       │       ├── route.ts            # Get/update/delete form
+│       │       ├── responses/route.ts  # Form responses + Google Sheets sync
+│       │       └── analytics/route.ts  # Form analytics data
+│       ├── templates/route.ts          # Form templates
+│       └── admin/
+│           ├── users/route.ts          # Admin: user management
+│           ├── users/[id]/route.ts     # Admin: update user
+│           ├── forms/route.ts          # Admin: all forms
+│           └── stats/route.ts          # Admin: system stats
+├── components/
+│   ├── ui/                             # shadcn/ui components (49 files)
+│   └── nav-bar.tsx                     # Navigation component
+├── lib/
+│   ├── prisma.ts                       # Prisma client singleton
+│   ├── auth.ts                         # BetterAuth server config
+│   ├── auth-client.ts                  # BetterAuth client hooks
+│   ├── admin.ts                        # Super admin config & helpers
+│   ├── storage.ts                      # Cloudflare R2 client
+│   ├── google-sheets.ts                # Google Sheets API integration
+│   ├── validation.ts                   # Zod schemas
+│   ├── types.ts                        # Shared TypeScript types
+│   └── utils.ts                        # Utility functions
+├── prisma/
+│   └── schema.prisma                   # Database schema
+├── middleware.ts                       # Route protection middleware
+├── .env.example                        # Environment variables template
+└── package.json
 ```
+
+### Key Directories
+
+- **`/app`** - Next.js 14 App Router pages and API routes
+- **`/lib`** - Core backend logic, integrations, and utilities
+- **`/components/ui`** - Reusable UI components from shadcn/ui
+- **`/prisma`** - Database schema and migrations
+
+---
+
+## API Endpoints
+
+### Public Routes
+- `POST /api/forms/[id]/responses` - Submit form response (public)
+- `GET /api/forms/[id]` - Get published form (public)
+
+### Authenticated Routes
+- `GET /api/forms` - List user's forms
+- `POST /api/forms` - Create new form
+- `GET /api/forms/[id]` - Get form details
+- `PATCH /api/forms/[id]` - Update form
+- `DELETE /api/forms/[id]` - Delete form
+- `GET /api/forms/[id]/responses` - Get form responses
+- `GET /api/forms/[id]/analytics` - Get form analytics
+- `POST /api/upload` - Upload file to R2
+- `GET /api/upload` - Get presigned upload URL
+- `GET /api/templates` - Get form templates
+
+### Admin Routes (Admin/Super Admin only)
+- `GET /api/admin/users` - List all users
+- `PATCH /api/admin/users/[id]` - Update user role/plan
+- `GET /api/admin/forms` - List all forms
+- `GET /api/admin/stats` - System statistics
+- `POST /api/templates` - Create template (admin only)
+
+---
+
+## Admin System
+
+### Super Admin Configuration
+
+Super admins are configured in code via `lib/admin.ts`:
+
+```typescript
+export const SUPER_ADMINS: string[] = [
+  "admin@example.com",
+]
+```
+
+Users with emails in this array automatically receive `SUPER_ADMIN` role upon sign-in.
+
+### Role Hierarchy
+
+1. **USER** (default)
+   - Create and manage own forms
+   - View own form responses
+   - Access own Google Sheets exports
+
+2. **ADMIN**
+   - All USER permissions
+   - View all forms in system
+   - View all users
+   - Access system statistics
+   - Cannot manage other admins
+
+3. **SUPER_ADMIN**
+   - All ADMIN permissions
+   - Promote/demote users to ADMIN
+   - Manage other admins
+   - Full system access
+
+### Admin Dashboard Features
+
+Access `/admin` after being promoted to admin:
+
+- **Overview**: System-wide statistics, top forms, recent activity
+- **User Management**: View all users, manage roles and plans
+- **Form Management**: View all forms across all users
+- **Statistics**: Platform metrics, trends, active users
 
 ---
 

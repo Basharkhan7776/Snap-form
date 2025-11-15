@@ -2,9 +2,23 @@
 
 import type React from "react"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { formsApi } from "@/lib/api-client"
+import { uploadFile, triggerFileInput } from "@/lib/helpers/file-upload"
+import { ProtectedRoute } from "@/components/auth/protected-route"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   DndContext,
   type DragEndEvent,
@@ -243,35 +257,153 @@ function CanvasDroppable({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function EditPage() {
+function EditPageContent() {
   const params = useParams<{ id: string }>()
-  const id = Array.isArray(params?.id) ? params.id[0] : params?.id || "form-1"
+  const id = Array.isArray(params?.id) ? params.id[0] : params?.id || ""
   const router = useRouter()
   const { toast } = useToast()
 
-  const preload = MOCK_FORMS[id] ?? {
-    title: "Untitled form",
-    coverUrl: "",
-    iconSymbol: "🧩",
-    description: "Describe your form...",
-    requireEmail: true,
-    fields: [
-      { id: "f-1", type: "short_text", label: "Your name", required: true },
-      { id: "f-2", type: "long_text", label: "Message" },
-    ],
+  // Loading & saving states
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [uploadingIcon, setUploadingIcon] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  // Form data
+  const [title, setTitle] = useState("")
+  const [coverUrl, setCoverUrl] = useState("")
+  const [iconSymbol, setIconSymbol] = useState("🧩")
+  const [description, setDescription] = useState("")
+  const [requireEmail, setRequireEmail] = useState(true)
+  const [fields, setFields] = useState<Field[]>([])
+
+  // Fetch form on mount
+  useEffect(() => {
+    if (!id) return
+    loadForm()
+  }, [id])
+
+  async function loadForm() {
+    try {
+      setLoading(true)
+      const response = await formsApi.get(id)
+      if (response.success && response.data) {
+        const form = response.data
+        setTitle(form.title || "")
+        setCoverUrl(form.coverUrl || "")
+        setIconSymbol(form.iconSymbol || "🧩")
+        setDescription(form.description || "")
+        setRequireEmail(form.requireEmail ?? true)
+        setFields(
+          (form.fields || []).map((f: any) => ({
+            ...f,
+            id: f.id || `f-${crypto.randomUUID().slice(0, 8)}`,
+          }))
+        )
+      }
+    } catch (error) {
+      console.error("Failed to load form:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load form. Please try again.",
+        variant: "destructive",
+      })
+      router.push("/dashboard")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // Top-level properties (mock state)
-  const [title, setTitle] = useState(preload.title)
-  const [coverUrl, setCoverUrl] = useState(preload.coverUrl || "")
-  const [iconSymbol, setIconSymbol] = useState(preload.iconSymbol || "🧩")
-  const [description, setDescription] = useState(preload.description || "")
-  const [requireEmail, setRequireEmail] = useState(!!preload.requireEmail)
+  async function handleSave() {
+    try {
+      setSaving(true)
+      const response = await formsApi.update(id, {
+        title,
+        description,
+        coverUrl,
+        iconSymbol,
+        requireEmail,
+        fields,
+      })
+      if (response.success) {
+        toast({
+          title: "Form updated",
+          description: "Your changes have been saved successfully.",
+        })
+      }
+    } catch (error) {
+      console.error("Failed to save form:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save form. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
 
-  // Canvas fields initialized from preload
-  const [fields, setFields] = useState<Field[]>(
-    (preload.fields || []).map((f) => ({ ...f, id: f.id || `f-${crypto.randomUUID().slice(0, 8)}` })),
-  )
+  async function handleDelete() {
+    try {
+      setDeleting(true)
+      await formsApi.delete(id)
+      toast({
+        title: "Form deleted",
+        description: "The form has been successfully deleted.",
+      })
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Failed to delete form:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete form. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleting(false)
+      setDeleteDialogOpen(false)
+    }
+  }
+
+  async function handleCoverUpload() {
+    triggerFileInput("image/*", async (file) => {
+      try {
+        setUploadingCover(true)
+        const url = await uploadFile(file)
+        setCoverUrl(url)
+        toast({ title: "Cover uploaded", description: "Cover image uploaded successfully." })
+      } catch (error) {
+        toast({
+          title: "Upload failed",
+          description: "Failed to upload cover image.",
+          variant: "destructive",
+        })
+      } finally {
+        setUploadingCover(false)
+      }
+    })
+  }
+
+  async function handleIconUpload() {
+    triggerFileInput("image/*", async (file) => {
+      try {
+        setUploadingIcon(true)
+        const url = await uploadFile(file)
+        setIconSymbol(url)
+        toast({ title: "Icon uploaded", description: "Icon uploaded successfully." })
+      } catch (error) {
+        toast({
+          title: "Upload failed",
+          description: "Failed to upload icon.",
+          variant: "destructive",
+        })
+      } finally {
+        setUploadingIcon(false)
+      }
+    })
+  }
 
   // DnD state
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -357,6 +489,29 @@ export default function EditPage() {
     setFields((prev) => prev.filter((f) => f.id !== id))
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-[100dvh]">
+        <div className="sticky top-0 z-30 border-b bg-background/70 backdrop-blur">
+          <div className="mx-auto w-full max-w-6xl px-4 py-3 flex items-center gap-3">
+            <Skeleton className="h-9 w-64" />
+            <div className="ml-auto flex items-center gap-2">
+              <Skeleton className="h-9 w-40" />
+              <Skeleton className="h-9 w-32" />
+              <Skeleton className="h-9 w-36" />
+            </div>
+          </div>
+        </div>
+        <div className="mx-auto w-full max-w-6xl px-4 py-6">
+          <div className="space-y-4">
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-[100dvh]">
       {/* Top Bar */}
@@ -372,28 +527,32 @@ export default function EditPage() {
 
           <div className="ml-auto flex items-center gap-2">
             <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={deleting}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+            <Button
               variant="secondary"
               size="sm"
               onClick={() => {
-                navigator.clipboard.writeText(`https://snap-form.app/s/${id}`)
-                toast({ title: "Link copied", description: "Short link copied to clipboard." })
+                navigator.clipboard.writeText(`${window.location.origin}/form/${id}`)
+                toast({ title: "Link copied", description: "Form link copied to clipboard." })
               }}
             >
               <LinkIcon className="h-4 w-4 mr-2" />
-              Copy Short Link
+              Copy Link
             </Button>
             <Button variant="ghost" size="sm" onClick={() => router.push(`/form/${id}/analytics`)}>
               <BarChart2 className="h-4 w-4 mr-2" />
               Analytics
             </Button>
-            <Button
-              size="sm"
-              onClick={() =>
-                toast({ title: "Form updated successfully", description: "Your changes have been saved (mock)." })
-              }
-            >
+            <Button size="sm" onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
-              Save Changes
+              {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </div>
@@ -554,7 +713,13 @@ export default function EditPage() {
                       value={coverUrl}
                       onChange={(e) => setCoverUrl(e.target.value)}
                     />
-                    <Button variant="outline" size="icon" aria-label="Upload cover (mock)">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCoverUpload}
+                      disabled={uploadingCover}
+                      aria-label="Upload cover"
+                    >
                       <UploadCloud className="h-4 w-4" />
                     </Button>
                   </div>
@@ -573,7 +738,13 @@ export default function EditPage() {
                     <div className="h-8 w-8 rounded-full border grid place-items-center text-sm">
                       {iconSymbol || "•"}
                     </div>
-                    <Button variant="outline" size="icon" aria-label="Upload icon (mock)">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleIconUpload}
+                      disabled={uploadingIcon}
+                      aria-label="Upload icon"
+                    >
                       <UploadCloud className="h-4 w-4" />
                     </Button>
                   </div>
@@ -605,6 +776,36 @@ export default function EditPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this form and all its responses. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  )
+}
+
+export default function EditPage() {
+  return (
+    <ProtectedRoute>
+      <EditPageContent />
+    </ProtectedRoute>
   )
 }

@@ -5,6 +5,9 @@ import type React from "react"
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { formsApi } from "@/lib/api-client"
+import { uploadFile, triggerFileInput } from "@/lib/helpers/file-upload"
+import { ProtectedRoute } from "@/components/auth/protected-route"
 import {
   DndContext,
   type DragEndEvent,
@@ -219,7 +222,7 @@ export default function CreatePage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  // Top-level form properties (mock only)
+  // Top-level form properties
   const [title, setTitle] = useState("Untitled form")
   const [coverUrl, setCoverUrl] = useState("")
   const [iconSymbol, setIconSymbol] = useState("🧩")
@@ -231,6 +234,12 @@ export default function CreatePage() {
     { id: "f-1", type: "short_text", label: "Your name", required: true },
     { id: "f-2", type: "long_text", label: "Message" },
   ])
+
+  // UI state
+  const [saving, setSaving] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [uploadingIcon, setUploadingIcon] = useState(false)
+  const [savedFormId, setSavedFormId] = useState<string | null>(null)
 
   // DnD state
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -314,12 +323,109 @@ export default function CreatePage() {
     setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)))
   }
 
+  async function handleSave() {
+    if (!title.trim()) {
+      toast({
+        title: "Title required",
+        description: "Please enter a form title before saving.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setSaving(true)
+
+      const formData = {
+        title: title.trim(),
+        description: description.trim() || undefined,
+        coverUrl: coverUrl.trim() || undefined,
+        iconSymbol: iconSymbol.trim() || "📝",
+        requireEmail,
+        fields: fields.map((f) => ({
+          id: f.id,
+          type: f.type,
+          label: f.label,
+          required: f.required,
+          options: f.options,
+        })),
+      }
+
+      const response = await formsApi.create(formData)
+
+      if (response.success && response.data) {
+        setSavedFormId(response.data.id)
+        toast({
+          title: "Form saved!",
+          description: "Your form has been created successfully.",
+        })
+
+        // Redirect to edit page
+        router.push(`/edit/${response.data.id}`)
+      }
+    } catch (error: any) {
+      console.error("Save error:", error)
+      toast({
+        title: "Save failed",
+        description: error.message || "Failed to save form. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleCoverUpload() {
+    triggerFileInput("image/*", async (file) => {
+      try {
+        setUploadingCover(true)
+        const url = await uploadFile(file)
+        setCoverUrl(url)
+        toast({
+          title: "Cover uploaded",
+          description: "Cover image has been uploaded successfully.",
+        })
+      } catch (error) {
+        toast({
+          title: "Upload failed",
+          description: "Failed to upload cover image. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setUploadingCover(false)
+      }
+    })
+  }
+
+  async function handleIconUpload() {
+    triggerFileInput("image/*", async (file) => {
+      try {
+        setUploadingIcon(true)
+        const url = await uploadFile(file)
+        setIconSymbol(url)
+        toast({
+          title: "Icon uploaded",
+          description: "Icon has been uploaded successfully.",
+        })
+      } catch (error) {
+        toast({
+          title: "Upload failed",
+          description: "Failed to upload icon. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setUploadingIcon(false)
+      }
+    })
+  }
+
   function removeField(id: string) {
     setFields((prev) => prev.filter((f) => f.id !== id))
   }
 
   return (
-    <div className="min-h-[100dvh]">
+    <ProtectedRoute>
+      <div className="min-h-[100dvh]">
       {/* Top Bar */}
       <div className="sticky top-0 z-30 border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto w-full max-w-6xl px-4 py-3 flex items-center gap-3">
@@ -332,24 +438,29 @@ export default function CreatePage() {
           />
 
           <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                navigator.clipboard.writeText("https://snap-form.app/s/mock-123")
-                toast({ title: "Link copied", description: "Short link copied to clipboard." })
-              }}
-            >
-              <LinkIcon className="h-4 w-4 mr-2" />
-              Copy Short Link
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => router.push("/form/mock-123/analytics")}>
-              <BarChart2 className="h-4 w-4 mr-2" />
-              Analytics
-            </Button>
-            <Button size="sm" onClick={() => toast({ title: "Saved", description: "Mock save complete." })}>
+            {savedFormId && (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    const url = `${window.location.origin}/form/${savedFormId}`
+                    navigator.clipboard.writeText(url)
+                    toast({ title: "Link copied", description: "Form link copied to clipboard." })
+                  }}
+                >
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                  Copy Link
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => router.push(`/form/${savedFormId}/analytics`)}>
+                  <BarChart2 className="h-4 w-4 mr-2" />
+                  Analytics
+                </Button>
+              </>
+            )}
+            <Button size="sm" onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
-              Save
+              {saving ? "Saving..." : savedFormId ? "Save Changes" : "Save"}
             </Button>
           </div>
         </div>
@@ -510,8 +621,18 @@ export default function CreatePage() {
                       value={coverUrl}
                       onChange={(e) => setCoverUrl(e.target.value)}
                     />
-                    <Button variant="outline" size="icon" aria-label="Upload cover (mock)">
-                      <UploadCloud className="h-4 w-4" />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCoverUpload}
+                      disabled={uploadingCover}
+                      aria-label="Upload cover"
+                    >
+                      {uploadingCover ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <UploadCloud className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -529,8 +650,18 @@ export default function CreatePage() {
                     <div className="h-8 w-8 rounded-full border grid place-items-center text-sm">
                       {iconSymbol || "•"}
                     </div>
-                    <Button variant="outline" size="icon" aria-label="Upload icon (mock)">
-                      <UploadCloud className="h-4 w-4" />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleIconUpload}
+                      disabled={uploadingIcon}
+                      aria-label="Upload icon"
+                    >
+                      {uploadingIcon ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <UploadCloud className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -561,6 +692,7 @@ export default function CreatePage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }

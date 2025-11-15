@@ -1,63 +1,137 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Plus } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Plus, MoreHorizontal } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal } from "lucide-react"
+import { formsApi, templatesApi } from "@/lib/api-client"
+import { useToast } from "@/hooks/use-toast"
+import { ProtectedRoute } from "@/components/auth/protected-route"
+import { usePlanLimits } from "@/lib/hooks/use-plan-limits"
+import { useRouter } from "next/navigation"
 
-const mockForms = Array.from({ length: 10 }).map((_, i) => ({
-  id: `form-${i + 1}`,
-  title: `Customer Feedback ${i + 1}`,
-  updatedAt: "Sep 10, 2025",
-}))
-
-const templates = [
-  { id: "t1", title: "Contact" },
-  { id: "t2", title: "Feedback" },
-  { id: "t3", title: "Job Application" },
-  { id: "t4", title: "Survey" },
-]
-
-export default function DashboardPage() {
+function DashboardContent() {
+  const { toast } = useToast()
+  const router = useRouter()
+  const { limits, canCreateForm } = usePlanLimits()
   const [showAll, setShowAll] = useState(false)
+  const [forms, setForms] = useState<any[]>([])
+  const [templates, setTemplates] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [formToDelete, setFormToDelete] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
-  const visibleForms = showAll ? mockForms : mockForms.slice(0, 5)
+  // Fetch forms
+  useEffect(() => {
+    loadForms()
+  }, [])
+
+  // Fetch templates
+  useEffect(() => {
+    loadTemplates()
+  }, [])
+
+  const loadForms = async () => {
+    try {
+      setLoading(true)
+      const response = await formsApi.list({ limit: 50 })
+      if (response.success && response.data) {
+        setForms(response.data)
+      }
+    } catch (error) {
+      console.error("Failed to load forms:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load forms. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadTemplates = async () => {
+    try {
+      const response = await templatesApi.list()
+      if (response.success && response.data) {
+        setTemplates(response.data.slice(0, 4)) // Show first 4
+      }
+    } catch (error) {
+      console.error("Failed to load templates:", error)
+    }
+  }
+
+  const handleDeleteClick = (formId: string) => {
+    setFormToDelete(formId)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!formToDelete) return
+
+    try {
+      setDeleting(true)
+      await formsApi.delete(formToDelete)
+
+      toast({
+        title: "Form deleted",
+        description: "The form has been successfully deleted.",
+      })
+
+      // Remove from state
+      setForms(forms.filter((f) => f.id !== formToDelete))
+    } catch (error) {
+      console.error("Failed to delete form:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete form. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleting(false)
+      setDeleteDialogOpen(false)
+      setFormToDelete(null)
+    }
+  }
+
+  const visibleForms = showAll ? forms : forms.slice(0, 5)
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    } catch {
+      return dateString
+    }
+  }
 
   return (
     <div className="px-6 py-6 space-y-8">
-      {/* Top Section: Chat-like box */}
-      <Card className="overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Create form with agent AI</CardTitle>
-            <CardDescription>Describe the form you want and let the agent suggest a starting point.</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="rounded-md border p-3 w-full">
-              <div className="text-sm text-muted-foreground">
-                Hi! Tell me what form you need. For example: {"'"}A product feedback form with ratings and optional
-                email.
-                {"'"}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium">Your Forms</h2>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setShowAll((s) => !s)}>
-              {showAll ? "Show Less" : "See All"}
-            </Button>
+            {forms.length > 5 && (
+              <Button variant="ghost" size="sm" onClick={() => setShowAll((s) => !s)}>
+                {showAll ? "Show Less" : "See All"}
+              </Button>
+            )}
             <Button asChild size="sm">
               <Link href="/create">
                 <Plus className="h-4 w-4 mr-2" />
@@ -67,66 +141,101 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Create New Form Card */}
-          <motion.div layout>
-            <Card className="h-full">
-              <CardContent className="h-full flex items-center justify-center py-12">
-                <Button asChild variant="secondary" className="gap-2">
-                  <Link href="/create">
-                    <Plus className="h-4 w-4" />
-                    Create New Form
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {visibleForms.map((f) => (
-            <motion.div key={f.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-              <Card>
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i}>
                 <CardHeader>
-                  <CardTitle className="text-base">{f.title}</CardTitle>
-                  <CardDescription>Updated {f.updatedAt}</CardDescription>
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
                 </CardHeader>
-                <CardContent className="flex gap-2">
-                  {/* View */}
-                  <Button asChild size="sm" variant="secondary">
-                    <Link href={`/form/${f.id}`}>View</Link>
+                <CardContent>
+                  <Skeleton className="h-9 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : forms.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-muted-foreground mb-4">You haven't created any forms yet</p>
+              <Button asChild>
+                <Link href="/create">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Your First Form
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Create New Form Card */}
+            <motion.div layout>
+              <Card className="h-full">
+                <CardContent className="h-full flex items-center justify-center py-12">
+                  <Button asChild variant="secondary" className="gap-2">
+                    <Link href="/create">
+                      <Plus className="h-4 w-4" />
+                      Create New Form
+                    </Link>
                   </Button>
-                  {/* Edit */}
-                  <Button asChild size="sm">
-                    <Link href={`/edit/${f.id}`}>Edit</Link>
-                  </Button>
-                  {/* Analytics */}
-                  <Button asChild size="sm" variant="ghost">
-                    <Link href={`/form/${f.id}/analytics`}>Analytics</Link>
-                  </Button>
-                  {/* Optional quick menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="ml-auto">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/form/${f.id}`}>View Form</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/edit/${f.id}`}>Edit Form</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/form/${f.id}/analytics`}>Analytics</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => alert("Mock delete")}>Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </CardContent>
               </Card>
             </motion.div>
-          ))}
-        </div>
+
+            {visibleForms.map((form) => (
+              <motion.div key={form.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-base line-clamp-1">{form.title}</CardTitle>
+                        <CardDescription>
+                          Updated {formatDate(form.updatedAt || form.createdAt)}
+                        </CardDescription>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/form/${form.id}`}>View Form</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/edit/${form.id}`}>Edit Form</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/form/${form.id}/analytics`}>Analytics</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteClick(form.id)}
+                            className="text-red-600"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex gap-2">
+                    <Button asChild size="sm" variant="secondary">
+                      <Link href={`/form/${form.id}`}>View</Link>
+                    </Button>
+                    <Button asChild size="sm">
+                      <Link href={`/edit/${form.id}`}>Edit</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="ghost">
+                      <Link href={`/form/${form.id}/analytics`}>Analytics</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </section>
 
       <Separator />
@@ -135,25 +244,66 @@ export default function DashboardPage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium">Templates</h2>
-          <Button size="sm" variant="ghost">
-            Browse
-          </Button>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {templates.map((t) => (
-            <Card key={t.id} className="hover:bg-accent/50 transition-colors">
-              <CardHeader>
-                <CardTitle className="text-base">{t.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <Button asChild size="sm" variant="secondary">
-                  <Link href="/create">Use Template</Link>
-                </Button>
+          {templates.length === 0 ? (
+            <Card className="col-span-full">
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No templates available yet
               </CardContent>
             </Card>
-          ))}
+          ) : (
+            templates.map((template) => (
+              <Card key={template.id} className="hover:bg-accent/50 transition-colors">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    {template.iconSymbol && <span>{template.iconSymbol}</span>}
+                    <CardTitle className="text-base">{template.title}</CardTitle>
+                  </div>
+                  {template.description && (
+                    <CardDescription className="text-xs line-clamp-2">{template.description}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <Button asChild size="sm" variant="secondary" className="w-full">
+                    <Link href={`/create?template=${template.id}`}>Use Template</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </section>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this form and all its responses. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
   )
 }
