@@ -4,13 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { createFormSchema, paginationSchema } from "@/lib/validation"
 import { createFormSpreadsheet, shareSpreadsheet } from "@/lib/google-sheets"
 import { Field } from "@/lib/types"
-
-// Plan limits configuration
-const PLAN_LIMITS = {
-  FREE: { maxForms: 3, maxResponsesPerMonth: 100 },
-  PREMIUM: { maxForms: -1, maxResponsesPerMonth: 10000 },
-  BUSINESS: { maxForms: -1, maxResponsesPerMonth: -1 },
-}
+import { PLAN_LIMITS, isValidPlan, type Plan } from "@/lib/constants"
 
 // GET /api/forms - List user's forms
 export async function GET(request: NextRequest) {

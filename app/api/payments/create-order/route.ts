@@ -2,16 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import Razorpay from "razorpay"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
+import { PLAN_PRICES, isUpgradeablePlan } from "@/lib/constants"
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 })
-
-const PLAN_PRICES = {
-  PREMIUM: 999, // ₹999 in paise (9.99 INR)
-  BUSINESS: 2999, // ₹2999 in paise (29.99 INR)
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,11 +22,11 @@ export async function POST(request: NextRequest) {
 
     const { plan } = await request.json()
 
-    if (!plan || !["PREMIUM", "BUSINESS"].includes(plan)) {
+    if (!plan || !isUpgradeablePlan(plan)) {
       return NextResponse.json({ success: false, error: "Invalid plan" }, { status: 400 })
     }
 
-    const amount = PLAN_PRICES[plan as keyof typeof PLAN_PRICES]
+    const amount = PLAN_PRICES[plan]
 
     // Create Razorpay order
     const order = await razorpay.orders.create({

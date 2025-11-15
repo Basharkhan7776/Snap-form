@@ -3,6 +3,7 @@ import crypto from "crypto"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { headers } from "next/headers"
+import { isUpgradeablePlan } from "@/lib/constants"
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +20,11 @@ export async function POST(request: NextRequest) {
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !plan) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
+    }
+
+    // Validate plan
+    if (!isUpgradeablePlan(plan)) {
+      return NextResponse.json({ success: false, error: "Invalid plan" }, { status: 400 })
     }
 
     // Verify signature
