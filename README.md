@@ -85,17 +85,57 @@ Users can create forms with drag-and-drop, collect responses, export data to Goo
 
 ## Getting Started
 
+### Quick Start (Minimal Setup)
+
+For a quick local development setup without full integration features:
+
+```bash
+# 1. Clone and install
+git clone https://github.com/openlabsdevs/snap-form.git
+cd snap-form
+bun install
+
+# 2. Set up PostgreSQL database
+createdb snapform  # Or use your preferred method
+
+# 3. Create minimal .env file
+cp .env.example .env
+# Edit .env and add only these required fields:
+#   - DATABASE_URL
+#   - BETTER_AUTH_SECRET (generate with: openssl rand -base64 32)
+#   - BETTER_AUTH_URL=http://localhost:3000
+#   - NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000
+#   - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (see Google OAuth setup below)
+
+# 4. Initialize database
+bunx prisma generate
+bunx prisma migrate dev --name init
+
+# 5. Start development server
+bun dev
+```
+
+**Note:** Without Google Sheets API and Cloudflare R2 configured, you can still:
+- ✅ Create and edit forms
+- ✅ Submit responses (stored in database)
+- ✅ View analytics
+- ❌ Auto-export to Google Sheets (will show warnings in console)
+- ❌ Upload files (will fail without R2 configuration)
+
+### Full Setup (All Features)
+
 ### Prerequisites
 
 - **Bun** (v1.0+ recommended) or Node.js (v18+)
-- **PostgreSQL** database instance
+- **PostgreSQL** database instance (v12+)
 - **Google Cloud Project** with:
   - OAuth 2.0 credentials
   - Service account for Google Sheets API
-  - Sheets API enabled
+  - Sheets API and Drive API enabled
 - **Cloudflare R2** bucket (for file uploads)
+- **Razorpay Account** (for payment processing - optional)
 
-### Setup
+### Installation Steps
 
 1. **Clone the repository:**
    ```bash
@@ -106,6 +146,9 @@ Users can create forms with drag-and-drop, collect responses, export data to Goo
 2. **Install dependencies:**
    ```bash
    bun install
+   # Or with npm/pnpm:
+   # npm install
+   # pnpm install
    ```
 
 3. **Configure environment variables:**
@@ -203,6 +246,152 @@ Users can create forms with drag-and-drop, collect responses, export data to Goo
 3. **Configure Public Access (optional):**
    - Set up custom domain for R2 bucket
    - Add domain to `CLOUDFLARE_R2_PUBLIC_URL`
+
+### Troubleshooting
+
+#### Database Connection Issues
+
+**Problem:** `Error: P1001: Can't reach database server`
+**Solution:**
+```bash
+# Check if PostgreSQL is running
+sudo service postgresql status
+
+# Verify DATABASE_URL format
+# Should be: postgresql://username:password@localhost:5432/database_name
+
+# Test connection
+psql -h localhost -U your_username -d snapform
+```
+
+#### Prisma Migration Errors
+
+**Problem:** `Environment variable not found: DATABASE_URL`
+**Solution:**
+```bash
+# Ensure .env file exists in project root
+ls -la .env
+
+# If missing, copy from example
+cp .env.example .env
+
+# Fill in DATABASE_URL before running migrations
+```
+
+**Problem:** `Migration failed: column already exists`
+**Solution:**
+```bash
+# Reset database (WARNING: deletes all data)
+bunx prisma migrate reset
+
+# Or manually drop and recreate database
+dropdb snapform
+createdb snapform
+bunx prisma migrate dev
+```
+
+#### Authentication Not Working
+
+**Problem:** OAuth redirect fails
+**Solution:**
+- Verify `BETTER_AUTH_URL` matches your local development URL
+- Check Google OAuth redirect URI is exactly: `http://localhost:3000/api/auth/callback/google`
+- Ensure both `BETTER_AUTH_URL` and `NEXT_PUBLIC_BETTER_AUTH_URL` are set
+
+**Problem:** "Invalid credentials" error
+**Solution:**
+- Regenerate `BETTER_AUTH_SECRET`: `openssl rand -base64 32`
+- Clear browser cookies and try again
+- Check that Google Client ID and Secret are correct
+
+#### Google Sheets Integration Issues
+
+**Problem:** "Failed to create Google Sheet" error
+**Solution:**
+- Verify service account JSON key is correctly formatted in `.env`
+- Ensure `GOOGLE_PRIVATE_KEY` has `\n` preserved (not actual newlines)
+- Check that Google Sheets API and Drive API are enabled in Google Cloud Console
+- Verify service account has necessary permissions
+
+**Problem:** Spreadsheet created but not visible
+**Solution:**
+- The sheet is auto-shared with the form owner's email
+- Check spam/trash folder for share notification
+- Manually add your email to service account permissions
+
+#### File Upload Errors
+
+**Problem:** "R2 bucket not configured" warning
+**Solution:**
+- This is expected if Cloudflare R2 is not set up
+- Add all `CLOUDFLARE_R2_*` environment variables
+- Verify R2 bucket exists and API token has write permissions
+
+**Problem:** "File upload failed" error
+**Solution:**
+- Check file size is under 10MB limit
+- Verify file type is allowed (images and PDFs only)
+- Ensure R2 credentials are correct
+
+#### Port Already in Use
+
+**Problem:** `Port 3000 is already in use`
+**Solution:**
+```bash
+# Find and kill process on port 3000
+lsof -ti:3000 | xargs kill -9
+
+# Or use a different port
+PORT=3001 bun dev
+```
+
+#### Module Not Found Errors
+
+**Problem:** `Cannot find module '@/...'`
+**Solution:**
+```bash
+# Reinstall dependencies
+rm -rf node_modules
+rm bun.lockb  # or package-lock.json/pnpm-lock.yaml
+bun install
+
+# Ensure TypeScript paths are configured correctly in tsconfig.json
+```
+
+### Development Tips
+
+1. **Use Prisma Studio** for database inspection:
+   ```bash
+   bunx prisma studio
+   # Opens at http://localhost:5555
+   ```
+
+2. **View console warnings** - The app logs helpful warnings when optional services aren't configured
+
+3. **Test with multiple users** - Use Chrome/Firefox incognito for different Google accounts
+
+4. **Monitor API calls** - Check Network tab in browser DevTools for API errors
+
+5. **Hot reload** - Changes to files automatically reload the dev server
+
+6. **Type checking**:
+   ```bash
+   bunx tsc --noEmit
+   ```
+
+7. **Format code**:
+   ```bash
+   bunx prettier --write .
+   ```
+
+8. **Reset plan limits for testing**:
+   ```sql
+   -- Connect to database
+   psql snapform
+
+   -- Update user plan
+   UPDATE users SET plan = 'PREMIUM' WHERE email = 'your-email@gmail.com';
+   ```
 
 ---
 

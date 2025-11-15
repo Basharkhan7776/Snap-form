@@ -28,7 +28,7 @@ import { useRouter } from "next/navigation"
 function DashboardContent() {
   const { toast } = useToast()
   const router = useRouter()
-  const { limits, canCreateForm } = usePlanLimits()
+  const { limits, canCreateForm, plan } = usePlanLimits()
   const [showAll, setShowAll] = useState(false)
   const [forms, setForms] = useState<any[]>([])
   const [templates, setTemplates] = useState<any[]>([])

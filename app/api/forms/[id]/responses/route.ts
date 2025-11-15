@@ -5,13 +5,7 @@ import { submitResponseSchema, generateResponseSchema, paginationSchema } from "
 import { canAccessForm } from "@/lib/admin"
 import { appendResponseToSheet } from "@/lib/google-sheets"
 import { Field } from "@/lib/types"
-
-// Plan limits configuration
-const PLAN_LIMITS = {
-  FREE: { maxForms: 3, maxResponsesPerMonth: 100 },
-  PREMIUM: { maxForms: -1, maxResponsesPerMonth: 10000 },
-  BUSINESS: { maxForms: -1, maxResponsesPerMonth: -1 },
-}
+import { PLAN_LIMITS, isValidPlan, type Plan } from "@/lib/constants"
 
 // GET /api/forms/[id]/responses - List form responses
 export async function GET(
@@ -96,11 +90,18 @@ export async function POST(
   try {
     const { id } = params
 
-    // Get form
+    // Get form with user (optimize query to avoid N+1)
     const form = await prisma.form.findFirst({
       where: {
         id,
         published: true, // Only allow responses to published forms
+      },
+      include: {
+        user: {
+          select: {
+            plan: true,
+          },
+        },
       },
     })
 
@@ -135,16 +136,13 @@ export async function POST(
       )
     }
 
-    // Check response limits for form owner
-    const formOwner = await prisma.user.findUnique({
-      where: { id: form.userId },
-      select: { plan: true },
-    })
-
-    const ownerPlan = (formOwner?.plan as keyof typeof PLAN_LIMITS) || "FREE"
+    // Check response limits for form owner (already fetched with form)
+    const ownerPlan = (form.user.plan as Plan) || "FREE"
     const planLimits = PLAN_LIMITS[ownerPlan]
 
     // Check monthly response limit (only if not unlimited)
+    // Note: There's still a small race condition window here between check and create.
+    // For strict enforcement, consider using database-level constraints or distributed locks.
     if (planLimits.maxResponsesPerMonth !== -1) {
       // Get first day of current month
       const now = new Date()
@@ -179,24 +177,29 @@ export async function POST(
     const userAgent = request.headers.get("user-agent") || "unknown"
     const referrer = request.headers.get("referer") || request.headers.get("referrer") || null
 
-    // Create response in database
-    const response = await prisma.response.create({
-      data: {
-        formId: id,
-        email: baseValidation.email,
-        data: baseValidation.data as any,
-        ipAddress,
-        userAgent,
-        referrer,
-      },
-    })
+    // Create response and increment count in a transaction to prevent race conditions
+    const response = await prisma.$transaction(async (tx) => {
+      // Create response in database
+      const newResponse = await tx.response.create({
+        data: {
+          formId: id,
+          email: baseValidation.email,
+          data: baseValidation.data as any,
+          ipAddress,
+          userAgent,
+          referrer,
+        },
+      })
 
-    // Increment response count
-    await prisma.form.update({
-      where: { id },
-      data: {
-        responseCount: { increment: 1 },
-      },
+      // Increment response count atomically
+      await tx.form.update({
+        where: { id },
+        data: {
+          responseCount: { increment: 1 },
+        },
+      })
+
+      return newResponse
     })
 
     // Append to Google Sheet (real-time sync)

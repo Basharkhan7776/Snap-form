@@ -1,46 +1,7 @@
 import { useAuth } from "./use-auth"
+import { PLAN_LIMITS, type Plan } from "@/lib/constants"
 
-export type Plan = "FREE" | "PREMIUM" | "BUSINESS"
-
-export type PlanLimits = {
-  maxForms: number
-  maxResponsesPerMonth: number
-  hasAdvancedAnalytics: boolean
-  hasGoogleSheetsExport: boolean
-  hasTeamCollaboration: boolean
-  hasCustomBranding: boolean
-  hasApiAccess: boolean
-}
-
-const PLAN_LIMITS: Record<Plan, PlanLimits> = {
-  FREE: {
-    maxForms: 3,
-    maxResponsesPerMonth: 100,
-    hasAdvancedAnalytics: false,
-    hasGoogleSheetsExport: false,
-    hasTeamCollaboration: false,
-    hasCustomBranding: false,
-    hasApiAccess: false,
-  },
-  PREMIUM: {
-    maxForms: -1, // unlimited
-    maxResponsesPerMonth: 10000,
-    hasAdvancedAnalytics: true,
-    hasGoogleSheetsExport: true,
-    hasTeamCollaboration: false,
-    hasCustomBranding: false,
-    hasApiAccess: false,
-  },
-  BUSINESS: {
-    maxForms: -1, // unlimited
-    maxResponsesPerMonth: -1, // unlimited
-    hasAdvancedAnalytics: true,
-    hasGoogleSheetsExport: true,
-    hasTeamCollaboration: true,
-    hasCustomBranding: true,
-    hasApiAccess: true,
-  },
-}
+export type { Plan } from "@/lib/constants"
 
 export function usePlanLimits() {
   const { user } = useAuth()
