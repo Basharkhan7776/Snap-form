@@ -6,6 +6,13 @@ import { canAccessForm } from "@/lib/admin"
 import { appendResponseToSheet } from "@/lib/google-sheets"
 import { Field } from "@/lib/types"
 
+// Plan limits configuration
+const PLAN_LIMITS = {
+  FREE: { maxForms: 3, maxResponsesPerMonth: 100 },
+  PREMIUM: { maxForms: -1, maxResponsesPerMonth: 10000 },
+  BUSINESS: { maxForms: -1, maxResponsesPerMonth: -1 },
+}
+
 // GET /api/forms/[id]/responses - List form responses
 export async function GET(
   request: NextRequest,
@@ -126,6 +133,45 @@ export async function POST(
         { error: "Email is required for this form" },
         { status: 400 }
       )
+    }
+
+    // Check response limits for form owner
+    const formOwner = await prisma.user.findUnique({
+      where: { id: form.userId },
+      select: { plan: true },
+    })
+
+    const ownerPlan = (formOwner?.plan as keyof typeof PLAN_LIMITS) || "FREE"
+    const planLimits = PLAN_LIMITS[ownerPlan]
+
+    // Check monthly response limit (only if not unlimited)
+    if (planLimits.maxResponsesPerMonth !== -1) {
+      // Get first day of current month
+      const now = new Date()
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+      // Count responses this month for all forms owned by this user
+      const monthlyResponseCount = await prisma.response.count({
+        where: {
+          form: {
+            userId: form.userId,
+          },
+          createdAt: {
+            gte: firstDayOfMonth,
+          },
+        },
+      })
+
+      if (monthlyResponseCount >= planLimits.maxResponsesPerMonth) {
+        return NextResponse.json(
+          {
+            error: "Response limit reached",
+            message: "This form has reached its monthly response limit. Please contact the form owner.",
+            code: "RESPONSE_LIMIT_REACHED"
+          },
+          { status: 403 }
+        )
+      }
     }
 
     // Get request metadata
