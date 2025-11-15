@@ -36,6 +36,7 @@ function DashboardContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [formToDelete, setFormToDelete] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false)
 
   // Fetch forms
   useEffect(() => {
@@ -111,6 +112,15 @@ function DashboardContent() {
   }
 
   const visibleForms = showAll ? forms : forms.slice(0, 5)
+  const canCreate = canCreateForm(forms.length)
+  const formLimitReached = !canCreate
+
+  const handleCreateFormClick = (e: React.MouseEvent) => {
+    if (formLimitReached) {
+      e.preventDefault()
+      setUpgradeDialogOpen(true)
+    }
+  }
 
   const formatDate = (dateString: string) => {
     try {
@@ -125,19 +135,33 @@ function DashboardContent() {
     <div className="px-6 py-6 space-y-8">
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Your Forms</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-medium">Your Forms</h2>
+            {limits.maxForms !== -1 && (
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                {forms.length}/{limits.maxForms} forms
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {forms.length > 5 && (
               <Button variant="ghost" size="sm" onClick={() => setShowAll((s) => !s)}>
                 {showAll ? "Show Less" : "See All"}
               </Button>
             )}
-            <Button asChild size="sm">
-              <Link href="/create">
+            {formLimitReached ? (
+              <Button size="sm" onClick={handleCreateFormClick} variant="default">
                 <Plus className="h-4 w-4 mr-2" />
                 New Form
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button asChild size="sm">
+                <Link href="/create">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Form
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -170,18 +194,20 @@ function DashboardContent() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Create New Form Card */}
-            <motion.div layout>
-              <Card className="h-full">
-                <CardContent className="h-full flex items-center justify-center py-12">
-                  <Button asChild variant="secondary" className="gap-2">
-                    <Link href="/create">
-                      <Plus className="h-4 w-4" />
-                      Create New Form
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
+            {!formLimitReached && (
+              <motion.div layout>
+                <Card className="h-full">
+                  <CardContent className="h-full flex items-center justify-center py-12">
+                    <Button asChild variant="secondary" className="gap-2">
+                      <Link href="/create">
+                        <Plus className="h-4 w-4" />
+                        Create New Form
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
 
             {visibleForms.map((form) => (
               <motion.div key={form.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
@@ -292,6 +318,24 @@ function DashboardContent() {
               className="bg-red-600 hover:bg-red-700"
             >
               {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Upgrade Dialog */}
+      <AlertDialog open={upgradeDialogOpen} onOpenChange={setUpgradeDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Form Limit Reached</AlertDialogTitle>
+            <AlertDialogDescription>
+              You've reached the maximum of {limits.maxForms} forms on the {plan} plan. Upgrade to Premium or Business for unlimited forms.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => router.push('/profile')}>
+              View Plans
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

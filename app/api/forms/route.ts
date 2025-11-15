@@ -5,6 +5,13 @@ import { createFormSchema, paginationSchema } from "@/lib/validation"
 import { createFormSpreadsheet, shareSpreadsheet } from "@/lib/google-sheets"
 import { Field } from "@/lib/types"
 
+// Plan limits configuration
+const PLAN_LIMITS = {
+  FREE: { maxForms: 3, maxResponsesPerMonth: 100 },
+  PREMIUM: { maxForms: -1, maxResponsesPerMonth: 10000 },
+  BUSINESS: { maxForms: -1, maxResponsesPerMonth: -1 },
+}
+
 // GET /api/forms - List user's forms
 export async function GET(request: NextRequest) {
   try {
@@ -84,6 +91,33 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Check plan limits
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { plan: true },
+    })
+
+    const userPlan = (user?.plan as keyof typeof PLAN_LIMITS) || "FREE"
+    const planLimits = PLAN_LIMITS[userPlan]
+
+    // Check form count limit (only if not unlimited)
+    if (planLimits.maxForms !== -1) {
+      const currentFormCount = await prisma.form.count({
+        where: { userId: session.user.id },
+      })
+
+      if (currentFormCount >= planLimits.maxForms) {
+        return NextResponse.json(
+          {
+            error: "Form limit reached",
+            message: `You've reached the maximum of ${planLimits.maxForms} forms on the ${userPlan} plan. Please upgrade to create more forms.`,
+            code: "PLAN_LIMIT_REACHED"
+          },
+          { status: 403 }
+        )
+      }
     }
 
     const body = await request.json()
